@@ -1,0 +1,25 @@
+# Optional GPU image: pretrained EDGE + the song-to-dance API and web app.
+# Untested on a GPU so far. Needs an NVIDIA GPU with ~24 GB VRAM (Jukebox feature extraction).
+FROM pytorch/pytorch:2.1.2-cuda11.8-cudnn8-devel
+
+RUN apt-get update && apt-get install -y --no-install-recommends git ffmpeg libsndfile1 && rm -rf /var/lib/apt/lists/*
+
+# EDGE and its dependencies (see https://github.com/Stanford-TML/EDGE#requirements)
+RUN git clone --depth 1 https://github.com/Stanford-TML/EDGE.git /opt/EDGE
+RUN pip install --no-cache-dir "git+https://github.com/facebookresearch/pytorch3d.git@stable" \
+ && pip install --no-cache-dir accelerate einops librosa p_tqdm soundfile tqdm wandb gdown matplotlib \
+ && pip install --no-cache-dir "git+https://github.com/rodrigo-castellon/jukemirlib.git"
+# Pretrained EDGE checkpoint (downloads checkpoint.pt into /opt/EDGE)
+RUN cd /opt/EDGE && bash download_model.sh
+# Jukebox weights (~10 GB) download on first run into this cache; mount a volume here to keep them.
+ENV JUKEMIRLIB_CACHE_DIR=/cache/jukemirlib
+
+COPY server/requirements.txt /app/server/requirements.txt
+RUN pip install --no-cache-dir -r /app/server/requirements.txt
+COPY server /app/server
+COPY web /app/web
+
+ENV EDGE_DIR=/opt/EDGE DATA_DIR=/jobs MODE=edge
+WORKDIR /app/server
+EXPOSE 8000
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]

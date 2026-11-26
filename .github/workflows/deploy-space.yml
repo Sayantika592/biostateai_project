@@ -1,0 +1,34 @@
+# Deploys this repo to a Hugging Face Space (Gradio SDK, free) on every push to main.
+# Setup, once, in GitHub repo Settings > Secrets and variables > Actions:
+#   secret   HF_TOKEN  a Hugging Face access token with write permission
+#   variable HF_SPACE  the Space id, e.g. your-hf-username/song-to-dance
+name: Deploy to Hugging Face Space
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ vars.HF_SPACE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Create the Space if needed
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          pip install -q "huggingface_hub>=0.24"
+          python -c "import os; from huggingface_hub import create_repo; create_repo(os.environ['HF_SPACE'], repo_type='space', space_sdk='gradio', exist_ok=True, token=os.environ['HF_TOKEN'])"
+      - name: Push to the Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE: ${{ vars.HF_SPACE }}
+        run: |
+          HF_USER="${HF_SPACE%%/*}"
+          # Spaces reject plain-git binary files; the demo GIF is only for GitHub.
+          git config user.name deploy && git config user.email deploy@localhost
+          git checkout -q --orphan space-build && git rm -rq --cached docs && git commit -qm "Space build"
+          git push --force "https://${HF_USER}:${HF_TOKEN}@huggingface.co/spaces/${HF_SPACE}" space-build:main

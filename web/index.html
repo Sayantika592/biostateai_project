@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Song to Dance</title>
+<style>
+  @property --h { syntax: "<number>"; inherits: false; initial-value: 0; }
+  :root {
+    --bg:#05030a; --glass:rgba(22,16,38,.62); --glass2:rgba(255,255,255,.06); --line:rgba(255,255,255,.12);
+    --text:#f2eefc; --muted:#a69cc4; --pink:#ff2bd6; --cyan:#00e5ff; --violet:#7a5cff; --gold:#ffd36e;
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.4 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         display:flex; flex-direction:column; overflow:hidden; }
+  header { position:relative; z-index:3; padding:10px 14px 8px; display:flex; flex-direction:column; gap:8px;
+           background:linear-gradient(180deg, rgba(30,14,52,.95), rgba(12,8,22,.9)); border-bottom:1px solid var(--line); }
+  .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .brand { display:flex; align-items:baseline; gap:10px; margin-right:auto; }
+  .brand h1 { margin:0; font-size:20px; font-weight:900; letter-spacing:.02em;
+              background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan),var(--gold),var(--pink)); background-size:300% 100%;
+              -webkit-background-clip:text; background-clip:text; color:transparent; animation:slide 10s linear infinite; }
+  .brand span { color:var(--muted); font-size:12px; }
+  .chip { font-size:11px; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:3px 9px; background:var(--glass2); }
+  label.f { color:var(--muted); font-size:12px; display:flex; gap:5px; align-items:center; }
+  select, input[type=number], input[type=text] { background:rgba(0,0,0,.35); color:var(--text); border:1px solid var(--line); border-radius:9px;
+           padding:6px 8px; font:inherit; outline:none; transition:border-color .2s, box-shadow .2s; }
+  input[type=number] { width:62px; }
+  select:focus, input:focus { border-color:var(--violet); box-shadow:0 0 0 3px rgba(122,92,255,.25); }
+  select option { background:#140c22; }
+
+  /* Buttons */
+  button, .btn { font:inherit; cursor:pointer; text-decoration:none; user-select:none; white-space:nowrap; }
+  .disco { position:relative; overflow:hidden; border:0; border-radius:999px; padding:9px 22px; font-weight:800; letter-spacing:.05em;
+           color:#12061e; text-transform:uppercase; font-size:13px;
+           background:linear-gradient(90deg,var(--pink),var(--violet),var(--cyan),var(--gold),var(--pink)); background-size:300% 100%;
+           box-shadow:0 0 0 1px rgba(255,255,255,.25) inset, 0 6px 22px -8px rgba(255,43,214,.8);
+           animation:slide 9s linear infinite; transition:transform .15s ease, box-shadow .3s ease, filter .3s; }
+  .disco::after { content:""; position:absolute; inset:0; background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.65) 50%,transparent 70%);
+           transform:translateX(-120%); transition:transform .6s ease; }
+  .disco:hover { animation-duration:1.4s; transform:translateY(-1px) scale(1.05);
+           box-shadow:0 0 0 1px rgba(255,255,255,.4) inset, 0 0 18px rgba(255,43,214,.75), 0 0 42px rgba(0,229,255,.5); filter:saturate(1.3) brightness(1.08); }
+  .disco:hover::after { transform:translateX(120%); }
+  .disco:active { transform:scale(.97); }
+  .ghost { display:inline-flex; align-items:center; gap:6px; background:var(--glass2); color:var(--text); border:1px solid var(--line);
+           border-radius:999px; padding:7px 14px; font-size:13px; font-weight:600; transition:transform .15s, box-shadow .3s, border-color .3s, color .3s, background .3s; }
+  .ghost:hover { animation:hue 2.2s linear infinite; border-color:hsl(var(--h) 100% 62%); color:hsl(var(--h) 100% 80%);
+           box-shadow:0 0 14px hsl(var(--h) 100% 60% / .55), inset 0 0 12px hsl(var(--h) 100% 60% / .18); transform:translateY(-1px); background:rgba(255,255,255,.09); }
+  .ghost:active { transform:scale(.96); }
+  button:disabled, .btn.off { opacity:.35; pointer-events:none; filter:grayscale(.6); }
+  @keyframes slide { to { background-position:300% 0; } }
+  @keyframes hue { to { --h:360; } }
+  #fname { font-size:12px; color:var(--gold); max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  #fname:empty { display:none; }
+  #ask { flex:1 1 300px; min-width:0; border-radius:999px; padding:8px 14px; }
+  .sep { width:1px; height:22px; background:var(--line); margin:0 2px; }
+
+  /* Stage */
+  #stage { flex:1; position:relative; min-height:0; }
+  #stage canvas { display:block; }
+  .hud { position:absolute; z-index:2; pointer-events:none; }
+  #status { left:12px; top:10px; max-width:calc(100% - 24px); background:var(--glass); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+            border:1px solid var(--line); border-radius:12px; padding:6px 12px; font-size:13px; color:var(--text); }
+  #reply { left:12px; top:46px; max-width:calc(100% - 24px); font-size:13px; color:var(--cyan); text-shadow:0 0 10px rgba(0,229,255,.5); }
+  #reply:empty, #status:empty { display:none; }
+  #hint { inset:0; display:flex; align-items:center; justify-content:center; }
+  #hint .card { pointer-events:auto; text-align:center; background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+            border:1px solid var(--line); border-radius:18px; padding:22px 26px; max-width:min(440px, 92%); box-shadow:0 20px 60px -20px rgba(122,92,255,.6); }
+  #hint h2 { margin:0 0 6px; font-size:19px; }
+  #hint p { margin:0 0 14px; color:var(--muted); }
+  #hint .row { justify-content:center; }
+  #loader { inset:0; display:none; align-items:center; justify-content:center; flex-direction:column; gap:14px; background:rgba(5,3,10,.45); }
+  #loader.on { display:flex; }
+  .eq { display:flex; gap:6px; align-items:flex-end; height:46px; }
+  .eq i { width:8px; border-radius:4px; background:linear-gradient(0deg,var(--pink),var(--cyan)); animation:eq 0.9s ease-in-out infinite; box-shadow:0 0 12px rgba(255,43,214,.6); }
+  .eq i:nth-child(2){animation-delay:-.2s}.eq i:nth-child(3){animation-delay:-.45s}.eq i:nth-child(4){animation-delay:-.1s}.eq i:nth-child(5){animation-delay:-.65s}.eq i:nth-child(6){animation-delay:-.3s}
+  @keyframes eq { 0%,100% { height:10px; } 50% { height:46px; } }
+  #loadtext { font-weight:700; letter-spacing:.04em; }
+  #bigplay { left:50%; top:50%; transform:translate(-50%,-50%); display:none; pointer-events:auto; }
+  #bigplay.on { display:block; }
+  #bigplay button { padding:16px 34px; font-size:16px; }
+  #drop { inset:0; display:none; align-items:center; justify-content:center; border:3px dashed var(--pink); background:rgba(255,43,214,.08);
+          font-size:22px; font-weight:800; color:var(--pink); text-shadow:0 0 12px rgba(255,43,214,.7); z-index:5; }
+  body.dragging #drop { display:flex; }
+
+  /* Timeline */
+  #tl { left:10px; right:10px; bottom:10px; pointer-events:auto; display:none; background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);
+        border:1px solid var(--line); border-radius:14px; padding:8px; }
+  #tl.on { display:block; }
+  #tlhead { display:flex; justify-content:space-between; font-size:11px; color:var(--muted); margin:0 2px 6px; }
+  #tlcards { position:relative; display:flex; gap:6px; overflow-x:auto; scrollbar-width:thin; }
+  .ph { position:relative; min-width:92px; border:1px solid var(--line); border-radius:10px; padding:6px 8px; background:rgba(255,255,255,.04);
+        cursor:pointer; transition:border-color .25s, box-shadow .25s, background .25s, transform .15s; }
+  .ph:hover { background:rgba(255,255,255,.09); transform:translateY(-1px); }
+  .ph.active { border-color:var(--cyan); box-shadow:0 0 14px rgba(0,229,255,.45), inset 0 0 14px rgba(0,229,255,.12); }
+  .ph.fresh { animation:fresh 1.2s ease-out; }
+  @keyframes fresh { 0% { box-shadow:0 0 0 2px var(--pink), 0 0 30px var(--pink); } 100% { box-shadow:none; } }
+  .ph .t { display:flex; align-items:center; gap:6px; font-weight:700; font-size:12px; }
+  .ph .t b { color:var(--gold); }
+  .ph .src { font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ph .m { height:4px; border-radius:2px; background:rgba(255,255,255,.1); margin-top:5px; overflow:hidden; }
+  .ph .m i { display:block; height:100%; background:linear-gradient(90deg,var(--cyan),var(--pink)); }
+  .rr { margin-left:auto; width:24px; height:24px; border-radius:50%; border:1px solid var(--line); background:rgba(0,0,0,.3); color:var(--text);
+        font-size:13px; line-height:1; padding:0; transition:transform .3s, box-shadow .3s, border-color .3s, color .3s; }
+  .rr:hover { animation:hue 1.6s linear infinite; border-color:hsl(var(--h) 100% 62%); color:hsl(var(--h) 100% 80%); box-shadow:0 0 12px hsl(var(--h) 100% 60% / .7); transform:rotate(180deg); }
+  .ph.rolling .rr { animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  #playhead { position:absolute; top:0; bottom:0; width:2px; background:#fff; box-shadow:0 0 8px #fff, 0 0 16px var(--pink); pointer-events:none; left:0; }
+  #plan { right:12px; top:10px; width:min(330px, 44%); max-height:calc(100% - 150px); overflow:auto; pointer-events:auto; display:none;
+          background:var(--glass); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); border:1px solid var(--line); border-radius:14px; padding:10px 12px; }
+  #plan.on { display:block; }
+  #plan h3 { margin:0 0 2px; font-size:15px; background:linear-gradient(90deg,var(--gold),var(--pink)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #plan .by { font-size:11px; color:var(--muted); margin-bottom:8px; }
+  #plan .sec { border-left:3px solid var(--c); padding:4px 0 4px 9px; margin:6px 0; border-radius:2px; transition:background .3s; }
+  #plan .sec.active { background:rgba(255,255,255,.06); }
+  #plan .sec.changed { animation:fresh 1.4s ease-out; }
+  #plan .sec .hd { font-size:12px; font-weight:700; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  #plan .sec .hd .tm { color:var(--muted); font-weight:500; }
+  #plan .tag { font-size:10px; padding:1px 6px; border-radius:999px; border:1px solid var(--line); color:var(--text); }
+  #plan .mv { font-size:12px; color:var(--gold); margin-top:2px; }
+  #plan .why { font-size:12px; color:var(--muted); font-style:italic; }
+  #plan .x { float:right; background:none; border:0; color:var(--muted); font-size:14px; cursor:pointer; }
+  #planbtn { display:none; }
+  #pcons { display:flex; flex-wrap:wrap; gap:5px; margin:0 0 6px; }
+  #pcons:empty { display:none; }
+  #pcons span { font-size:11px; padding:2px 8px; border-radius:999px; color:#d9fbff; border:1px solid rgba(0,229,255,.5);
+                background:rgba(0,229,255,.1); box-shadow:0 0 10px rgba(0,229,255,.25); }
+  .ph { border-top:3px solid var(--c, var(--line)); }
+  .ph .mvs { font-size:11px; color:var(--gold); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #rec.on { border-color:#ff3b5c; color:#ff8fa3; box-shadow:0 0 14px rgba(255,59,92,.6); }
+  @media (max-width:640px) { .brand span { display:none; } .sep { display:none; } #tl { left:6px; right:6px; } #plan { width:calc(100% - 24px); top:auto; bottom:120px; max-height:40%; } }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "./vendor/three/three.module.js",
+  "three/addons/": "./vendor/three/addons/"
+} }
+</script>
+</head>
+<body>
+<header>
+  <div class="row">
+    <div class="brand"><h1>Song to Dance</h1><span>AI choreographer on real motion capture</span></div>
+    <span id="mode" class="chip">Connecting…</span>
+    <span id="assist" class="chip" hidden></span>
+  </div>
+  <div class="row">
+    <label class="btn ghost" for="file" title="MP3, WAV, M4A…">🎵 Upload song</label>
+    <input id="file" type="file" accept="audio/*" hidden>
+    <button id="sample" class="ghost" title="A 32-second house track made in code">✨ Try demo track</button>
+    <span id="fname"></span>
+    <span class="sep"></span>
+    <label class="f">Start <input id="start" type="number" value="0" min="0" step="1"></label>
+    <label class="f">Length <input id="seconds" type="number" value="30" min="5" max="180" step="5"></label>
+    <label class="f">Style <select id="genre"><option value="auto">Surprise me</option></select></label>
+    <label class="f">Energy <select id="energy"><option value="match">Follow the music</option><option value="calm">Calm</option><option value="intense">Intense</option></select></label>
+    <button id="go" class="disco">Generate</button>
+    <button id="play" class="ghost" disabled>▶ Play</button>
+    <a id="bvh" class="btn ghost off" href="#" download="dance.bvh" title="Animation file for Blender, Maya, Unity">⬇ BVH</a>
+    <a id="json" class="btn ghost off" href="#" download="dance.json">⬇ JSON</a>
+    <button id="cam" class="ghost" title="Slowly orbit the camera">🎥 Auto cam: on</button>
+    <button id="rec" class="ghost" disabled title="Record the dance with its music as a video">⏺ Video</button>
+    <button id="planbtn" class="ghost">📜 Plan</button>
+  </div>
+  <div class="row">
+    <input id="ask" type="text" placeholder='Tell the AI choreographer a vibe or a story: "a shy robot who goes wild at the drop"'>
+    <button id="askgo" class="disco">Choreograph</button>
+  </div>
+</header>
+<div id="stage">
+  <div id="status" class="hud"></div>
+  <div id="reply" class="hud"></div>
+  <div id="hint" class="hud"><div class="card">
+    <h2>Drop a song, get a dance</h2>
+    <p>Upload any track (or drag it here) and tell the AI choreographer a vibe or a story. It reads the music, writes a plan section by section, and performs it with real dancers' moves from the AIST++ motion-capture set.</p>
+    <div class="row"><label class="btn disco" for="file">Upload song</label><button id="sample2" class="ghost">✨ Try demo track</button></div>
+  </div></div>
+  <div id="plan" class="hud"><button class="x" id="planx" title="Hide">✕</button><h3 id="ptitle"></h3><div class="by" id="pby"></div><div id="pcons" title="Body constraints from your words"></div><div id="psecs"></div></div>
+  <div id="loader" class="hud"><div class="eq"><i></i><i></i><i></i><i></i><i></i><i></i></div><div id="loadtext">Working…</div></div>
+  <div id="bigplay" class="hud"><button class="disco" id="bigplaybtn">▶ Play the dance</button></div>
+  <div id="tl" class="hud">
+    <div id="tlhead"><span>Choreography: one card per 8-beat phrase. Click to jump, ↻ to swap the move.</span><span id="tltime"></span></div>
+    <div id="tlcards"><div id="playhead"></div></div>
+  </div>
+  <div id="drop" class="hud">Drop your song to dance</div>
+</div>
+<audio id="audio" preload="auto"></audio>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+const $ = (id) => document.getElementById(id);
+const stage = $("stage"), audio = $("audio");
+
+// ---------- Renderer, camera, bloom ----------
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+stage.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const BG = 0x05030a;
+scene.background = new THREE.Color(BG);
+scene.fog = new THREE.FogExp2(BG, 0.085);
+const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 100);
+camera.position.set(0, 1.5, 4.6);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.95, 0);
+controls.enableDamping = true;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 0.5;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.minDistance = 1.5; controls.maxDistance = 12;
+
+let composer = null, bloom = null;
+try {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.8, 0.5, 0.2);
+  composer.addPass(bloom);
+  composer.addPass(new OutputPass());
+} catch (e) { console.warn("bloom off", e); composer = null; }
+
+// ---------- Disco floor ----------
+const N = 28, S = 0.5;
+const tileGeo = new THREE.PlaneGeometry(S * 0.9, S * 0.9); tileGeo.rotateX(-Math.PI / 2);
+const tiles = new THREE.InstancedMesh(tileGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }), N * N);
+const tilePos = [], m4 = new THREE.Matrix4(), col = new THREE.Color();
+for (let i = 0; i < N; i++) for (let k = 0; k < N; k++) {
+  const x = (i - N / 2 + 0.5) * S, z = (k - N / 2 + 0.5) * S;
+  m4.makeTranslation(x, 0, z); tiles.setMatrixAt(tilePos.length, m4);
+  tiles.setColorAt(tilePos.length, col.setRGB(0.02, 0.02, 0.03));
+  tilePos.push([x, z, (i + k) & 1]);
+}
+scene.add(tiles);
+
+function glowTexture() {
+  const c = document.createElement("canvas"); c.width = c.height = 128;
+  const g = c.getContext("2d"), r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  r.addColorStop(0, "rgba(255,255,255,1)"); r.addColorStop(0.4, "rgba(255,255,255,.35)"); r.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+  return new THREE.CanvasTexture(c);
+}
+const glowTex = glowTexture();
+const additive = (o) => ({ transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, ...o });
+
+// ---------- Spotlight beams ----------
+const BEAM_H = 7;
+const beams = [0xff2bd6, 0x00e5ff, 0x7a5cff, 0xffd36e].map((c, i) => {
+  const g = new THREE.ConeGeometry(1.0, BEAM_H, 40, 1, true); g.translate(0, -BEAM_H / 2, 0);
+  const p = g.attributes.position, cols = new Float32Array(p.count * 3);
+  for (let v = 0; v < p.count; v++) { const f = 0.015 + 0.11 * (1 + p.getY(v) / BEAM_H) ** 2; cols.set([f, f, f], v * 3); }
+  g.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+  const cone = new THREE.Mesh(g, new THREE.MeshBasicMaterial(additive({ color: c, vertexColors: true, side: THREE.DoubleSide, fog: false, opacity: 0.5 })));
+  const a = (i / 4) * Math.PI * 2 + 0.6;
+  cone.position.set(Math.cos(a) * 4.2, 6.2, Math.sin(a) * 4.2 - 1);
+  const spot = new THREE.Mesh(new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2),
+    new THREE.MeshBasicMaterial(additive({ color: c, map: glowTex, opacity: 0.6 })));
+  spot.position.y = 0.01;
+  scene.add(cone, spot);
+  return { cone, spot, phase: i * 1.7, color: new THREE.Color(c) };
+});
+
+// ---------- Haze particles ----------
+const HAZE = 600, hazePos = new Float32Array(HAZE * 3);
+for (let i = 0; i < HAZE; i++) hazePos.set([(Math.random() - 0.5) * 12, Math.random() * 5, (Math.random() - 0.5) * 12], i * 3);
+const hazeGeo = new THREE.BufferGeometry(); hazeGeo.setAttribute("position", new THREE.BufferAttribute(hazePos, 3));
+const haze = new THREE.Points(hazeGeo, new THREE.PointsMaterial(additive({ color: 0x9a86ff, size: 0.035, opacity: 0.55, map: glowTex })));
+scene.add(haze);
+
+// ---------- Neon dancer ----------
+const LEFT = new Set([1, 4, 7, 10, 13, 16, 18, 20, 22]), RIGHT = new Set([2, 5, 8, 11, 14, 17, 19, 21, 23]);
+const PAL = [new THREE.Color(0x00e5ff), new THREE.Color(0xff2bd6), new THREE.Color(0xffd36e)];
+const side = (j) => (LEFT.has(j) ? 0 : RIGHT.has(j) ? 1 : 2);
+const P = Array.from({ length: 24 }, () => new THREE.Vector3());
+let dance = null, joints = [], bones = [], head = null, shadow = null, trails = [];
+const dancer = new THREE.Group(); scene.add(dancer);
+const TRAIL_J = [20, 21, 10, 11], TN = 40;
+
+function buildSkeleton(parents) {
+  dancer.clear(); trails.forEach((t) => scene.remove(t.line, t.dots));
+  const jointMats = PAL.map((c) => new THREE.MeshBasicMaterial({ color: c.clone().lerp(new THREE.Color(1, 1, 1), 0.55) }));
+  const boneMats = PAL.map((c) => new THREE.MeshBasicMaterial({ color: c }));
+  const sg = new THREE.SphereGeometry(0.032, 16, 12), cg = new THREE.CylinderGeometry(0.022, 0.022, 1, 12);
+  joints = parents.map((p, j) => { const m = new THREE.Mesh(sg, jointMats[side(j)]); dancer.add(m); return m; });
+  bones = parents.map((p, j) => { if (p < 0) return null; const m = new THREE.Mesh(cg, boneMats[side(j)]); dancer.add(m); return m; });
+  head = new THREE.Mesh(new THREE.SphereGeometry(0.095, 24, 18), new THREE.MeshBasicMaterial({ color: 0xffe2a0 }));
+  dancer.add(head);
+  shadow = new THREE.Mesh(new THREE.CircleGeometry(0.7, 40).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial(additive({ map: glowTex, color: 0x7a5cff, opacity: 0.7 })));
+  shadow.position.y = 0.012; dancer.add(shadow);
+  trails = TRAIL_J.map((j) => {
+    const pos = new Float32Array(TN * 3), cols = new Float32Array(TN * 3), base = PAL[side(j)];
+    for (let i = 0; i < TN; i++) { const f = (i / (TN - 1)) ** 2; cols.set([base.r * f, base.g * f, base.b * f], i * 3); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); g.setAttribute("color", new THREE.BufferAttribute(cols, 3));
+    const line = new THREE.Line(g, new THREE.LineBasicMaterial(additive({ vertexColors: true })));
+    const dots = new THREE.Points(g, new THREE.PointsMaterial(additive({ vertexColors: true, size: 0.05, map: glowTex })));
+    line.frustumCulled = dots.frustumCulled = false;
+    scene.add(line, dots);
+    return { j, pos, g, fresh: true };
+  });
+}
+
+const UP = new THREE.Vector3(0, 1, 0), tmp = new THREE.Vector3();
+function pose(t) {
+  const fr = dance.frames, n = fr.length, ft = Math.max(0, t * dance.fps);
+  const i0 = Math.min(n - 1, Math.floor(ft)), i1 = Math.min(n - 1, i0 + 1), w = Math.min(1, ft - i0);
+  const A = fr[i0], B = fr[i1];
+  for (let j = 0; j < 24; j++) P[j].set(A[j][0] + (B[j][0] - A[j][0]) * w, A[j][1] + (B[j][1] - A[j][1]) * w, A[j][2] + (B[j][2] - A[j][2]) * w);
+  for (let j = 0; j < 24; j++) {
+    joints[j].position.copy(P[j]);
+    const p = dance.parents[j]; if (p < 0) continue;
+    const bone = bones[j], a = P[p], b = P[j];
+    tmp.subVectors(b, a); const len = tmp.length();
+    bone.position.copy(a).add(b).multiplyScalar(0.5);
+    bone.scale.set(1, Math.max(len, 1e-4), 1);
+    bone.quaternion.setFromUnitVectors(UP, tmp.divideScalar(Math.max(len, 1e-6)));
+  }
+  tmp.subVectors(P[15], P[12]).normalize();
+  head.position.copy(P[15]).addScaledVector(tmp, 0.06);
+  shadow.position.set(P[0].x, 0.012, P[0].z);
+}
+
+function updateTrails(reset) {
+  for (const tr of trails) {
+    const p = P[tr.j];
+    if (reset || tr.fresh) { for (let i = 0; i < TN; i++) tr.pos.set([p.x, p.y, p.z], i * 3); tr.fresh = false; }
+    else { tr.pos.copyWithin(0, 3); tr.pos.set([p.x, p.y, p.z], (TN - 1) * 3); }
+    tr.g.attributes.position.needsUpdate = true;
+  }
+}
+
+// ---------- Music reaction ----------
+let audioCtx = null, analyser = null, freq = null, level = 0, recDest = null;
+function initAudioGraph() {
+  if (audioCtx) { audioCtx.resume?.(); return; }
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaElementSource(audio);
+    analyser = audioCtx.createAnalyser(); analyser.fftSize = 512; analyser.smoothingTimeConstant = 0.6;
+    src.connect(analyser); analyser.connect(audioCtx.destination);
+    recDest = audioCtx.createMediaStreamDestination(); analyser.connect(recDest);
+    freq = new Uint8Array(analyser.frequencyBinCount);
+  } catch (e) { console.warn("no analyser", e); analyser = null; }
+}
+function bassLevel() {
+  if (!analyser || audio.paused) return level * 0.95;
+  analyser.getByteFrequencyData(freq);
+  let s = 0; for (let i = 1; i < 10; i++) s += freq[i];
+  const v = Math.min(1, Math.max(0, (s / 9 / 255 - 0.35) / 0.55));
+  return level * 0.6 + v * 0.4;
+}
+
+let beats = [], beatIdx = 0, beatCount = 0, lastBeatAt = -10, lastT = 0;
+const rings = [];
+function onBeat(now) {
+  beatCount++; lastBeatAt = now;
+  rings.push({ t: now, x: P[0].x, z: P[0].z });
+  if (rings.length > 5) rings.shift();
+}
+function trackBeats(t, now) {
+  if (t < lastT - 0.05 || t > lastT + 0.5) { beatIdx = 0; while (beatIdx < beats.length && beats[beatIdx] <= t) beatIdx++; }
+  else if (!audio.paused) { while (beatIdx < beats.length && beats[beatIdx] <= t) { beatIdx++; onBeat(now); } }
+  lastT = t;
+}
+
+function updateFloor(now, lvl) {
+  const flash = Math.exp(-(now - lastBeatAt) * 5);
+  const hueBase = now * 0.02 + beatCount * 0.09, hx = P[0].x, hz = P[0].z;
+  for (let idx = 0; idx < tilePos.length; idx++) {
+    const [x, z, par] = tilePos[idx];
+    const d = Math.hypot(x - hx, z - hz);
+    let v = 0.03 + 0.04 * lvl;
+    for (const r of rings) {
+      const age = now - r.t; if (age > 1.8) continue;
+      const rd = Math.hypot(x - r.x, z - r.z) - age * 3.0;
+      v += 0.5 * Math.exp(-(rd * rd) / 0.05) * (1 - age / 1.8);
+    }
+    if (((par + beatCount) & 1) === 0) v += (0.1 + 0.22 * lvl) * flash * Math.exp(-d * 0.18);
+    v += 0.12 * Math.exp(-(d * d) / 0.6);
+    col.setHSL((hueBase + d * 0.035 + par * 0.5) % 1, 1, Math.min(0.62, v));
+    tiles.setColorAt(idx, col);
+  }
+  tiles.instanceColor.needsUpdate = true;
+}
+
+const target = new THREE.Vector3();
+function updateBeams(now, lvl) {
+  const flash = Math.exp(-(now - lastBeatAt) * 4);
+  for (const b of beams) {
+    const a = now * 0.45 + b.phase;
+    target.set(P[0].x + Math.cos(a) * 1.4, 0, P[0].z + Math.sin(a * 1.3) * 1.4);
+    tmp.subVectors(target, b.cone.position);
+    const dist = tmp.length();
+    b.cone.quaternion.setFromUnitVectors(tmp.set(0, -1, 0), target.clone().sub(b.cone.position).normalize());
+    b.cone.scale.set(1, dist / BEAM_H, 1);
+    b.cone.material.opacity = 0.35 + 0.35 * lvl + 0.3 * flash;
+    b.spot.position.set(target.x, 0.011, target.z);
+    b.spot.material.opacity = 0.25 + 0.3 * lvl + 0.25 * flash;
+  }
+}
+
+// ---------- Loop ----------
+let autoCam = true;
+const clock = new THREE.Clock();
+const camTarget = new THREE.Vector3(0, 0.95, 0), prevTarget = new THREE.Vector3();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(0.1, clock.getDelta()), now = clock.elapsedTime;
+  level = bassLevel();
+  let jumped = false;
+  if (dance) {
+    const t = audio.currentTime;
+    jumped = Math.abs(t - lastT) > 0.25;
+    trackBeats(t, now);
+    pose(t);
+    updateTrails(jumped);
+    updateTimeline(t);
+    camTarget.set(P[0].x, 0.95, P[0].z);
+  }
+  updateFloor(now, level);
+  updateBeams(now, level);
+  haze.rotation.y += dt * 0.02;
+  // follow the dancer: move target and camera together so the orbit distance stays the same
+  prevTarget.copy(controls.target);
+  controls.target.lerp(camTarget, 0.04);
+  camera.position.add(tmp.subVectors(controls.target, prevTarget));
+  controls.autoRotate = autoCam;
+  controls.autoRotateSpeed = audio.paused ? 0.3 : 0.7;
+  controls.update();
+  if (composer) { bloom.strength = 0.6 + 0.35 * level + 0.25 * Math.exp(-(now - lastBeatAt) * 5); composer.render(); }
+  else renderer.render(scene, camera);
+});
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  renderer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
+  if (composer) composer.setSize(w, h);
+}
+addEventListener("resize", resize); new ResizeObserver(resize).observe(stage); resize();
+
+// ---------- Timeline ----------
+let phraseEls = [], activeIdx = -1;
+const SEC_COLORS = ["#00e5ff", "#ff2bd6", "#ffd36e", "#7a5cff", "#3dffa8"];
+const esc = (t) => String(t ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const ENERGY_LABEL = { calm: "calm", match: "steady", intense: "intense" };
+let planEls = {};
+function renderPlan(plan, changed) {
+  if (!plan || !plan.sections) return;
+  $("ptitle").textContent = plan.title || "Your dance";
+  $("pby").textContent = plan.parser === "llm"
+    ? `Written by the AI choreographer (Qwen2.5 LLM${plan.device === "gpu" ? " on the Space's GPU" : ", on this server"}) in ${plan.seconds_taken}s`
+    : (assistReady ? "Plan from the music's energy. Type a vibe or story below and the AI choreographer (LLM) will rewrite it."
+                   : "Plan from the music's energy (AI choreographer LLM still loading, rule-based for now)");
+  $("pcons").innerHTML = (plan.constraints || []).map((c) => `<span>🔒 ${esc(c.label)}</span>`).join("");
+  planEls = {};
+  $("psecs").innerHTML = "";
+  for (const s of plan.sections) {
+    const el = document.createElement("div"); el.className = "sec";
+    el.style.setProperty("--c", SEC_COLORS[(s.section - 1) % SEC_COLORS.length]);
+    el.innerHTML = `<div class="hd">S${s.section} <span class="tm">${fmt(s.t0)}–${fmt(s.t1)} · ${s.music} music</span>
+      <span class="tag">${esc(GENRE_NAMES[s.style] || s.style)}</span><span class="tag">${ENERGY_LABEL[s.energy] || s.energy}</span></div>
+      <div class="mv">“${esc(s.move)}”</div><div class="why">${esc(s.why)}</div>`;
+    el.onclick = () => { audio.currentTime = s.t0 + 0.01; if (audio.paused) playAudio(); };
+    el.style.cursor = "pointer";
+    if (changed && changed.includes(s.section)) el.classList.add("changed");
+    $("psecs").appendChild(el); planEls[s.section] = el;
+  }
+  $("plan").classList.add("on"); $("planbtn").style.display = "none";
+}
+$("planx").onclick = () => { $("plan").classList.remove("on"); $("planbtn").style.display = "inline-flex"; };
+$("planbtn").onclick = () => { $("plan").classList.add("on"); $("planbtn").style.display = "none"; };
+const GENRE_NAMES = {};
+let assistReady = false;
+function renderTimeline() {
+  const box = $("tlcards"); [...box.querySelectorAll(".ph")].forEach((e) => e.remove());
+  const tl = dance.timeline || [];
+  phraseEls = tl.map((p, i) => {
+    const el = document.createElement("div"); el.className = "ph";
+    el.style.flex = `${Math.max(0.5, p.t1 - p.t0)} 1 0`;
+    if (p.section) el.style.setProperty("--c", SEC_COLORS[(p.section - 1) % SEC_COLORS.length]);
+    const m = /_d(\d+)_.*_ch(\d+)/.exec(p.source || "");
+    const who = m ? `Dancer ${+m[1]} · routine ${+m[2]}` : p.source;
+    el.innerHTML = `<div class="t"><b>${i + 1}</b><span>${p.style}</span><button class="rr" title="Swap this phrase for a different move">↻</button></div>
+      ${p.move ? `<div class="mvs" title="${esc(p.move)}">${esc(p.move)}</div>` : ""}<div class="src" title="AIST++ clip ${p.source}">${who}</div><div class="m" title="Move energy"><i style="width:${Math.round(8 + 92 * p.energy)}%"></i></div>`;
+    el.onclick = () => { audio.currentTime = p.t0 + 0.01; if (audio.paused) playAudio(); };
+    el.querySelector(".rr").onclick = (e) => { e.stopPropagation(); reroll(p, el); };
+    box.appendChild(el);
+    return el;
+  });
+  activeIdx = -1;
+  $("tl").classList.add("on");
+}
+function updateTimeline(t) {
+  const tl = dance.timeline || []; if (!tl.length) return;
+  let i = tl.findIndex((p) => t >= p.t0 && t < p.t1); if (i < 0) i = t < tl[0].t0 ? 0 : tl.length - 1;
+  if (i !== activeIdx) {
+    phraseEls[activeIdx]?.classList.remove("active"); phraseEls[i]?.classList.add("active"); activeIdx = i;
+    Object.values(planEls).forEach((e) => e.classList.remove("active")); planEls[tl[i].section]?.classList.add("active");
+  }
+  const el = phraseEls[i], p = tl[i];
+  if (el) {
+    const f = Math.min(1, Math.max(0, (t - p.t0) / Math.max(1e-3, p.t1 - p.t0)));
+    $("playhead").style.left = `${el.offsetLeft + el.offsetWidth * f}px`;
+  }
+  const T = dance.frames.length / dance.fps;
+  $("tltime").textContent = `${fmt(t)} / ${fmt(T)}`;
+}
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+// ---------- UI state ----------
+const status = (s) => ($("status").textContent = s);
+let currentFile = null, job = null, busy = false, audioURL = null, lastPrompt = "";
+function setBusy(b, text) {
+  busy = b;
+  ["go", "askgo", "sample", "sample2"].forEach((id) => ($(id).disabled = b));
+  $("loader").classList.toggle("on", b && !!text);
+  if (text) $("loadtext").textContent = text;
+}
+function setFile(f) {
+  currentFile = f;
+  $("fname").textContent = f ? "♪ " + f.name : "";
+  if (f) status(`Loaded "${f.name}". Hit Generate, or describe the dance you want.`);
+}
+$("file").onchange = () => { if ($("file").files[0]) setFile($("file").files[0]); };
+
+fetch("api/health").then((r) => r.json()).then((h) => {
+  $("mode").textContent = { stitch: "Engine: AIST++ move stitching", edge: "Engine: EDGE diffusion", mock: "Engine: demo" }[h.mode] || h.mode;
+  $("assist").hidden = false;
+  $("assist").textContent = h.assistant.startsWith("ready") ? `AI choreographer: Qwen2.5 LLM ✓${h.assistant.includes("GPU") ? " (GPU)" : ""}` : h.assistant === "loading" ? "AI choreographer: warming up…" : "AI choreographer: rules fallback";
+  $("assist").title = h.assistant; assistReady = h.assistant.startsWith("ready");
+  $("seconds").max = h.max_seconds;
+  for (const [code, name] of Object.entries(h.genres || {})) { $("genre").add(new Option(name, code)); GENRE_NAMES[code] = name; }
+}).catch(() => ($("mode").textContent = "Server unreachable"));
+
+function playAudio() {
+  initAudioGraph();
+  return audio.play().then(() => $("bigplay").classList.remove("on")).catch(() => $("bigplay").classList.add("on"));
+}
+$("play").onclick = () => (audio.paused ? playAudio() : audio.pause());
+$("bigplaybtn").onclick = () => playAudio();
+audio.onplay = () => { $("play").textContent = "❚❚ Pause"; $("bigplay").classList.remove("on"); };
+audio.onpause = () => ($("play").textContent = "▶ Play");
+$("cam").onclick = () => { autoCam = !autoCam; $("cam").textContent = `🎥 Auto cam: ${autoCam ? "on" : "off"}`; };
+
+async function loadSample() {
+  const r = await fetch("api/sample.mp3");
+  if (!r.ok) throw new Error("demo track unavailable");
+  setFile(new File([await r.blob()], "Demo house track (120 BPM).mp3", { type: "audio/mpeg" }));
+}
+async function trySample() {
+  initAudioGraph();
+  if (busy) return;
+  setBusy(true, "Mixing the demo track…");
+  try {
+    await loadSample(); $("start").value = 0; $("seconds").value = 30;
+    if (!$("ask").value.trim()) $("ask").value = "a shy dancer who slowly finds confidence and goes wild at the drop";
+  }
+  catch (e) { status("Failed: " + e.message); setBusy(false); return; }
+  setBusy(false);
+  await generate();
+}
+$("sample").onclick = trySample; $("sample2").onclick = trySample;
+
+// drag and drop
+let dragDepth = 0;
+addEventListener("dragenter", (e) => { e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+addEventListener("dragleave", () => { if (--dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); } });
+addEventListener("dragover", (e) => e.preventDefault());
+addEventListener("drop", (e) => {
+  e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+  const f = [...(e.dataTransfer?.files || [])].find((f) => f.type.startsWith("audio/") || /\.(mp3|wav|m4a|ogg|flac|aac)$/i.test(f.name));
+  if (f) setFile(f); else status("That doesn't look like an audio file.");
+});
+
+// ---------- Chat with the AI choreographer ----------
+async function askAndDance() {
+  initAudioGraph();
+  const text = $("ask").value.trim();
+  if (!text || busy) return;
+  if (job && job.plan && dance) return refine(text);
+  $("reply").textContent = "";
+  try {
+    if (!currentFile) { $("reply").textContent = "No song yet, so I'll use the demo track."; await loadSample(); }
+    // Length and start time come from the words ("45 seconds from 1:10"); the plan comes from the LLM.
+    const s = await getJSON("api/interpret", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    $("seconds").value = s.seconds; $("start").value = s.start;
+    await generate();
+  } catch (e) {
+    $("reply").textContent = "Sorry, that failed: " + e.message;
+  }
+}
+async function refine(text) {
+  setBusy(true, "The AI choreographer is rewriting the plan…");
+  try {
+    job = await getJSON(`api/jobs/${job.id}/refine`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }) });
+    const t = audio.currentTime;
+    await loadDance(`api/jobs/${job.id}`, job.version);
+    renderPlan(job.plan, job.plan.changed);
+    const changed = job.changed_slots || [];
+    phraseEls.forEach((el, k) => { if (changed.includes(dance.timeline[k].slot)) el.classList.add("fresh"); });
+    const first = dance.timeline.find((p) => changed.includes(p.slot));
+    audio.currentTime = first ? Math.max(0, first.t0 - 0.3) : t;
+    $("reply").textContent = "💬 " + job.plan.reply;
+    status(`${job.genre} at ${job.tempo} BPM · ${job.seconds}s · ${dance.timeline.length} phrases. Keep refining, or tap ↻ on a phrase.`);
+    $("ask").value = "";
+    setBusy(false);
+    playAudio();
+  } catch (e) {
+    $("reply").textContent = "Sorry, that failed: " + e.message;
+    setBusy(false);
+  }
+}
+function setChatMode() {
+  const refineMode = !!(job && job.plan && dance);
+  $("askgo").textContent = refineMode ? "Refine" : "Choreograph";
+  $("ask").placeholder = refineMode ? 'Refine it: "make the ending calmer", "krump at the drop", "keep the left hand still", "arms crossed in the intro"'
+    : 'Tell the AI choreographer a vibe or a story: "a shy robot who goes wild at the drop"';
+}
+$("askgo").onclick = askAndDance;
+$("ask").addEventListener("keydown", (e) => { if (e.key === "Enter") askAndDance(); });
+
+// ---------- Video export: record the stage with the music ----------
+let recorder = null;
+$("rec").onclick = () => {
+  if (recorder) { recorder.stop(); return; }
+  initAudioGraph();
+  const canvas = renderer.domElement;
+  if (!canvas.captureStream || !window.MediaRecorder) { status("This browser can't record video. Try Chrome or Edge."); return; }
+  const stream = canvas.captureStream(30);
+  recDest?.stream.getAudioTracks().forEach((t) => stream.addTrack(t));
+  const type = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm", "video/mp4"].find((t) => MediaRecorder.isTypeSupported(t)) || "";
+  const chunks = [];
+  recorder = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: 6e6 } : {});
+  recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: recorder.mimeType || "video/webm" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `song-to-dance.${(recorder.mimeType || "").includes("mp4") ? "mp4" : "webm"}`; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    recorder = null; $("rec").classList.remove("on"); $("rec").textContent = "⏺ Video";
+    status("Video saved. Share it anywhere.");
+    audio.removeEventListener("ended", stopRec);
+  };
+  const stopRec = () => recorder && recorder.stop();
+  audio.addEventListener("ended", stopRec);
+  audio.currentTime = 0;
+  recorder.start(500);
+  playAudio();
+  $("rec").classList.add("on"); $("rec").textContent = "■ Stop recording";
+  status("Recording the whole dance… it saves when the song ends (or press Stop).");
+};
+
+// ---------- Generate ----------
+const getJSON = async (url, opts) => { const r = await fetch(url, opts); if (!r.ok) throw new Error((await r.text()).slice(0, 160) || r.statusText); return r.json(); };
+$("go").onclick = () => { initAudioGraph(); generate(); };
+
+async function loadDance(base, version) {
+  const d = await getJSON(`${base}/motion.json?v=${version || 0}`, { cache: "no-store" });
+  beats = d.beats && d.beats.length ? d.beats : [];
+  if (!dance) buildSkeleton(d.parents);
+  dance = d; renderTimeline();
+  lastT = -1;
+}
+
+async function generate() {
+  if (busy) return;
+  if (!currentFile) { status("Pick a song first, or try the demo track."); return; }
+  setBusy(true, "Uploading…"); audio.pause();
+  $("hint").style.display = "none";
+  const fd = new FormData();
+  fd.append("file", currentFile, currentFile.name); fd.append("start", $("start").value); fd.append("seconds", $("seconds").value);
+  fd.append("genre", $("genre").value); fd.append("energy", $("energy").value); const prompt = $("ask").value.trim() || lastPrompt; fd.append("prompt", prompt);
+  try {
+    job = await getJSON("api/generate", { method: "POST", body: fd });
+    while (job.status !== "done" && job.status !== "error") {
+      setBusy(true, job.status[0].toUpperCase() + job.status.slice(1) + "…" + (/plan/.test(job.status) ? " (it may take some time)" : ""));
+      await new Promise((r) => setTimeout(r, 1000));
+      job = await getJSON(`api/jobs/${job.id}`);
+    }
+    if (job.status === "error") throw new Error(job.error);
+    setBusy(true, "Loading the dance…");
+    const base = `api/jobs/${job.id}`;
+    // Download the whole song before playing, so playback never waits on the network.
+    const [blob] = await Promise.all([
+      fetch(`${base}/clip.mp3`, { cache: "no-store" }).then((r) => { if (!r.ok) throw new Error("audio missing"); return r.blob(); }),
+      loadDance(base, job.version),
+    ]);
+    if (audioURL) URL.revokeObjectURL(audioURL);
+    audioURL = URL.createObjectURL(blob);
+    audio.src = audioURL;
+    await new Promise((res) => { audio.oncanplaythrough = res; audio.onerror = res; setTimeout(res, 4000); });
+    $("bvh").href = `${base}/motion.bvh`; $("json").href = `${base}/motion.json`;
+    ["bvh", "json"].forEach((id) => $(id).classList.remove("off"));
+    $("play").disabled = false;
+    const n = (dance.timeline || []).length;
+    status(`${job.genre} at ${job.tempo} BPM · ${job.seconds}s · ${n} phrases. Tap ↻ on a phrase to swap a move, or type below to refine.`);
+    renderPlan(job.plan);
+    if (job.plan && job.plan.reply && job.plan.parser === "llm") $("reply").textContent = "💬 " + job.plan.reply;
+    lastPrompt = prompt; $("ask").value = ""; setChatMode(); $("rec").disabled = false;
+    setBusy(false);
+    playAudio();
+  } catch (e) {
+    status("Failed: " + e.message);
+    setBusy(false);
+    if (!dance) $("hint").style.display = "";
+  }
+}
+
+async function reroll(p, el) {
+  if (busy || !job) return;
+  busy = true; el.classList.add("rolling");
+  status(`Finding a new move for phrase ${phraseEls.indexOf(el) + 1}…`);
+  try {
+    job = await getJSON(`api/jobs/${job.id}/reroll`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slot: p.slot }) });
+    const idx = phraseEls.indexOf(el);
+    await loadDance(`api/jobs/${job.id}`, job.version);
+    const fresh = phraseEls[idx]; fresh?.classList.add("fresh");
+    const np = dance.timeline[idx];
+    audio.currentTime = Math.max(0, np.t0 - 0.5);
+    if (audio.paused) playAudio();
+    status(`Phrase ${idx + 1} is now ${np.style} from ${/_d(\d+)_/.exec(np.source) ? "dancer " + +/_d(\d+)_/.exec(np.source)[1] : np.source}. Keep swapping until you love it.`);
+  } catch (e) {
+    status("Re-roll failed: " + e.message);
+  } finally {
+    busy = false; el.classList.remove("rolling");
+  }
+}
+</script>
+</body>
+</html>
